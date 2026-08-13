@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ESP8266 LED Control</title>
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 30px 20px;
+    text-align: center;
+  }
+  h2 {
+    margin-bottom: 5px;
+  }
+  .sub {
+    color: #666;
+    font-size: 14px;
+    margin-bottom: 30px;
+  }
+  button {
+    display: block;
+    width: 220px;
+    margin: 12px auto;
+    padding: 16px;
+    font-size: 18px;
+    border: 1px solid #888;
+    border-radius: 6px;
+    background: #eee;
+    cursor: pointer;
+  }
+  button:active {
+    background: #ccc;
+  }
+  #status {
+    margin-top: 30px;
+    padding: 12px;
+    font-size: 15px;
+    background: #f2f2f2;
+    border-radius: 6px;
+  }
+  #log {
+    margin-top: 20px;
+    font-size: 13px;
+    color: #444;
+    text-align: left;
+    max-width: 320px;
+    margin-left: auto;
+    margin-right: auto;
+    white-space: pre-line;
+  }
+</style>
+</head>
+<body>
+
+<h2>ESP8266 LED Control</h2>
+<div class="sub">Experiment 2 - control over different networks</div>
+
+<button onclick="send('ON')">LED ON</button>
+<button onclick="send('OFF')">LED OFF</button>
+<button onclick="send('BLINK')">BLINK</button>
+
+<div id="status">Connecting to broker...</div>
+<div id="log"></div>
+
+<script>
+// change these two to match the sketch, they are case sensitive
+var cmdTopic = "gtu/kovid7/led/cmd";
+var ackTopic = "gtu/kovid7/led/ack";
+
+var brokerUrl = "wss://broker.hivemq.com:8884/mqtt";
+
+var statusBox = document.getElementById("status");
+var logBox = document.getElementById("log");
+
+// random id so two phones do not clash on the public broker
+var clientId = "webclient-" + Math.floor(Math.random() * 100000);
+
+var client = mqtt.connect(brokerUrl, { clientId: clientId });
+
+client.on("connect", function () {
+  statusBox.innerHTML = "Connected to broker";
+  client.subscribe(ackTopic);
+  addLog("connected as " + clientId);
+});
+
+client.on("message", function (topic, message) {
+  var text = message.toString();
+  statusBox.innerHTML = "Board replied: " + text;
+  addLog("received " + text);
+});
+
+client.on("reconnect", function () {
+  statusBox.innerHTML = "Reconnecting...";
+});
+
+client.on("error", function (err) {
+  statusBox.innerHTML = "Error: " + err.message;
+});
+
+function send(cmd) {
+  if (!client.connected) {
+    statusBox.innerHTML = "Not connected to broker yet";
+    return;
+  }
+  client.publish(cmdTopic, cmd);
+  addLog("sent " + cmd);
+}
+
+function addLog(line) {
+  var t = new Date().toLocaleTimeString();
+  logBox.innerHTML = t + "  " + line + "\n" + logBox.innerHTML;
+}
+</script>
+
+</body>
+</html>
